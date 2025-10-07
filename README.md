@@ -62,9 +62,12 @@
    # Development (uses memory database)
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    
-   # Production (with PostgreSQL)
+   # Production (with PostgreSQL) - Local
    export DATABASE_URL="postgres://user:pass@host:5432/db"
    uvicorn app.main:app --host 0.0.0.0 --port 8000
+   
+   # Production - Render deployment
+   uvicorn main:app --host 0.0.0.0 --port $PORT
    ```
 
 ---
