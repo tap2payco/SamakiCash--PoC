@@ -6,8 +6,9 @@ import os
 import requests
 
 from app.core.config import settings
-from app.core.database import init_db, close_db
-from app.api import auth, analyze, match, credit
+from app.core.database import init_db, close_db, get_db
+from app.api import auth, analyze, match, credit, users
+from app.models import UserType
 
 # Create FastAPI app
 app = FastAPI(
@@ -30,6 +31,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(analyze.router, prefix="/api", tags=["Catch Analysis"])
 app.include_router(match.router, prefix="/api", tags=["Matchmaking"])
 app.include_router(credit.router, prefix="/api", tags=["Financial Services"])
+app.include_router(users.router, prefix="/api", tags=["Users"])
 
 # Startup and shutdown events
 @app.on_event("startup")
@@ -38,6 +40,37 @@ async def startup_event():
     await init_db()
     print(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} started successfully!")
     print(f"📊 Using {'PostgreSQL' if not settings.USE_MEMORY_DB else 'in-memory'} database")
+    # Seed test users if none exist
+    try:
+        conn = await get_db()
+        existing = await conn.fetch("SELECT * FROM users")
+        if not existing:
+            import uuid
+            from datetime import datetime
+            password = "Piuspe@9702"
+            # Fisher
+            await conn.execute(
+                "INSERT INTO users (id, email, phone, password_hash, user_type, name, organization, location, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+                str(uuid.uuid4()), "elespius1.0@gmail.com", "+255700000001", password, UserType.FISHER.value, "Fisher User", None, "Mwanza", datetime.now()
+            )
+            # Seller
+            await conn.execute(
+                "INSERT INTO users (id, email, phone, password_hash, user_type, name, organization, location, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+                str(uuid.uuid4()), "elespius1.0@gmail.com", "+255700000002", password, UserType.SELLER.value, "Seller User", "Landing Site", "Dar es Salaam", datetime.now()
+            )
+            # Buyer
+            await conn.execute(
+                "INSERT INTO users (id, email, phone, password_hash, user_type, name, organization, location, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+                str(uuid.uuid4()), "elespius1.0@gmail.com", "+255700000003", password, UserType.BUYER.value, "Buyer User", "Lake Hotel", "Mwanza", datetime.now()
+            )
+            # Superuser
+            await conn.execute(
+                "INSERT INTO users (id, email, phone, password_hash, user_type, name, organization, location, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+                str(uuid.uuid4()), "superuser@samakicash.com", "+255700000000", password, UserType.SUPERUSER.value, "Super Admin", "SamakiCash", "HQ", datetime.now()
+            )
+            print("👤 Seeded 4 test users (fisher, seller, buyer, superuser)")
+    except Exception as e:
+        print(f"Seeding users failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():

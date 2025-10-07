@@ -19,6 +19,7 @@ class MemoryDB:
         self.catches = []
         self.loans = []
         self.insurance = []
+        self.transactions = []
     
     async def execute(self, query, *params):
         print(f"DB Query: {query}")
@@ -29,9 +30,13 @@ class MemoryDB:
             user_data = {
                 "id": params[0],
                 "email": params[1],
-                "password_hash": params[2],
-                "user_type": params[3],
-                "created_at": params[4] if len(params) > 4 else datetime.now()
+                "phone": params[2] if len(params) > 2 else None,
+                "password_hash": params[3],
+                "user_type": params[4],
+                "name": params[5] if len(params) > 5 else None,
+                "organization": params[6] if len(params) > 6 else None,
+                "location": params[7] if len(params) > 7 else None,
+                "created_at": params[8] if len(params) > 8 else datetime.now()
             }
             self.users.append(user_data)
             return True
@@ -57,6 +62,13 @@ class MemoryDB:
                 password = params[1]
                 for user in self.users:
                     if user['email'] == email and user['password_hash'] == password:
+                        return [user]
+                return []
+            if "phone" in query and "password_hash" in query:
+                phone = params[0]
+                password = params[1]
+                for user in self.users:
+                    if user.get('phone') == phone and user['password_hash'] == password:
                         return [user]
                 return []
             return self.users
@@ -160,11 +172,11 @@ async def create_tables():
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id VARCHAR PRIMARY KEY,
-                    email VARCHAR UNIQUE NOT NULL,
+                    email VARCHAR UNIQUE,
+                    phone VARCHAR UNIQUE,
                     password_hash VARCHAR NOT NULL,
                     user_type VARCHAR NOT NULL,
                     name VARCHAR,
-                    phone VARCHAR,
                     organization VARCHAR,
                     location VARCHAR,
                     created_at TIMESTAMP DEFAULT NOW()
@@ -210,6 +222,20 @@ async def create_tables():
                     coverage_amount DECIMAL,
                     annual_premium DECIMAL,
                     status VARCHAR DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+
+            # Create transactions table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id VARCHAR PRIMARY KEY,
+                    user_id VARCHAR NOT NULL,
+                    type VARCHAR NOT NULL, -- 'sale' | 'purchase' | 'loan_repayment' etc
+                    amount DECIMAL NOT NULL,
+                    currency VARCHAR DEFAULT 'TZS',
+                    metadata JSONB,
                     created_at TIMESTAMP DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
